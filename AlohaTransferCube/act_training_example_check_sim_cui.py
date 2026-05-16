@@ -3,11 +3,15 @@ This script demonstrates how to view trained by ACT Policy.
 
 lerobot/aloha_sim_transfer_cube_human
 
+1. this code: act_training_example_check_sim_cui.py
+2. dataset_id: lerobot/aloha_sim_transfer_cube_human
+3. function: lerobot/examples/tutorial/act/act_training_example.py で train した model の
+シュミレーションでの検証コード
+
 $ export PYTHONPATH=$PYTHONPATH:/home/yuor-id/local/git-download/lerobot/src
 $ python act_check_sim_cui.py
 
 """
-
 import gym_aloha
 import gymnasium as gym
 import torch
@@ -107,7 +111,8 @@ try:
         )
         # fps が重要みたい。
         # 30[fps]  --> 1.0 / 30.0 = 0.03333
-        if cv2.waitKey(31) & 0xFF == ord("q"):
+        # 50[fps]
+        if cv2.waitKey(20) & 0xFF == ord("q"):
             break
         if terminated or truncated:
             obs, info = env.reset()
