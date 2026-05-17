@@ -152,6 +152,7 @@ try:
         # IMAGE
         # -----------------------------------
         if True:
+            #print('obs.keys():',obs.keys())
             img_tensor, qpos_tensor = preprocess(obs,info,env,size=224)
         else:
             img = obs["top"]
