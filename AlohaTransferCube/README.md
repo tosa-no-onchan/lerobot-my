@@ -11,10 +11,13 @@ lerobot.policies.act.modeling_act の class ACT(nn.Module) を直接使った、
       lerobot ACT サンプルコード をなるべく再現した train コード。  
       lerobot/examples/tutorial/act/act_training_example.py  
       10K - 50K 程、学習させてください。Loss: 0.011 程が、良いとおもう。  
+      自分の今後の改造が、改善になるのか、改悪になるのかの指標にするため、なるべく原型に忠実になるように、  
+      パラメータを設定しました。  
+      ただし、これは、僕が推測した予測のパラメータです。
     
     ii) use_ex=True  
       自分で、カスタマイズした train コード。  
-      input size 224x244 アスペクト比を維持して、Centerよせ、余白は、黒(0,0,0) 埋め。  
+      input size 224x244 に、アスペクト比を維持してリサイズ、Centerよせ、余白は、黒(0,0,0) 埋め。  
       transforms.ColorJitter() で、フィルターを組み込み済。  
       5 - 6 epochs 程、学習させてください。 
       Loss: 0.011 程が、良いとおもう。
