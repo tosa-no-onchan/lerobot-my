@@ -7,7 +7,7 @@ lerobot.policies.act.modeling_act の class ACT(nn.Module) を直接使った、
 
     jupyter notebook  
     train.ipynb  
-    i) use_ex=True  
+    i) use_ex=False  
       lerobot ACT サンプルコード をなるべく再現した train コード。  
       lerobot/examples/tutorial/act/act_training_example.py  
       10K - 50K 程、学習させてください。Loss: 0.011 程が、良いとおもう。  
@@ -27,6 +27,8 @@ lerobot.policies.act.modeling_act の class ACT(nn.Module) を直接使った、
 #### 2. シミュレーション  
 
     $ python Act_check_sim_cui.py  
+    i) use_ex=False 版  
+      結構最後の手渡しのところまで行くけど、時間切れで、終わるシーンがおおい。残念!!  
   
 #### 3.  tunning  
 
