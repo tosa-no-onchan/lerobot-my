@@ -21,16 +21,28 @@ from lerobot.datasets import LeRobotDatasetMetadata
 from lerobot.policies import make_pre_post_processors
 from lerobot.policies.act import ACTPolicy
 import sys
+import time
 
 # =========================
 # ENV
 # =========================
-env = gym.make("gym_aloha/AlohaTransferCube-v0")
+#env = gym.make("gym_aloha/AlohaTransferCube-v0")
+env = gym.make("gym_aloha/AlohaTransferCube-v0", render_mode="rgb_array")
+
+# 環境のメタデータから想定FPSを取得（通常 50 が返ってきます）
+fps = env.metadata["render_fps"] 
+print(f"環境のFPS: {fps}")
+# 50 FPS なので、1周あたりに必要な時間は 1 / 50 = 0.02秒
+TARGET_FRAME_TIME = 1.0 / env.metadata.get("render_fps", 50) 
+
 # =========================
 # MODEL
 # =========================
 device = torch.device("cuda")
-model_id = "output/robot_learning_tutorial/act"
+
+model_id = "output/robot_learning_tutorial/act-10K"
+#model_id = "output/robot_learning_tutorial/act-15K"
+
 model = ACTPolicy.from_pretrained(
     model_id,
     local_files_only=True
@@ -54,9 +66,12 @@ print('model.config.output_features',model.config.output_features)
 # =========================
 # LOOP
 # =========================
+target_qpos = None
+
 obs, info = env.reset()
 try:
     while True:
+        start_time = time.time()
         # -----------------------------------
         # IMAGE
         # -----------------------------------
@@ -95,8 +110,13 @@ try:
 
         # postprocess
         action = postprocess(action)
+        #new_action_norm= action[0]
+        #target_qpos=new_action_norm
+
         #action = postprocess({"action": action})["action"]
         action_np = action[0].cpu().numpy()
+        #action_np = target_qpos.cpu().numpy()
+
         # -----------------------------------
         # STEP
         # -----------------------------------
@@ -112,8 +132,15 @@ try:
         # fps が重要みたい。
         # 30[fps]  --> 1.0 / 30.0 = 0.03333
         # 50[fps]
-        if cv2.waitKey(20) & 0xFF == ord("q"):
+        #if cv2.waitKey(20) & 0xFF == ord("q"):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
+        # 4. 正確に 50 FPS になるよう残りの時間を計算してスリープ
+        elapsed_time = time.time() - start_time
+        sleep_time = TARGET_FRAME_TIME - elapsed_time
+        if sleep_time > 0:
+            time.sleep(sleep_time)
+
         if terminated or truncated:
             obs, info = env.reset()
 finally:
