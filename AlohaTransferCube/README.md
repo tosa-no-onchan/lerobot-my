@@ -1,4 +1,4 @@
-### lerobot/aloha_sim_transfer_cube_human  
+### AlohaTransferCube  
 lerobot の キューブの手渡しの model ACT(lerobot/aloha_sim_transfer_cube_human) を使った、学習用の pytorch コードです。  
 
 lerobot.policies.act.modeling_act の class ACT(nn.Module) を直接使った、 torch train 方法の参考になれば、幸いです。  
