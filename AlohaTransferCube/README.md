@@ -35,3 +35,4 @@ lerobot.policies.act.modeling_act の class ACT(nn.Module) を直接使った、
   config = ACTConfig(...) を自分で、カスタマイズできます。  
   まだまだ、改造の余地は、あると思います。  
   n_decoder_layers=1 を 2 , 6 辺りに出来るみたい。ChatGTP が、其の様に言っていた。  
+  改造するときは、おんちゃんのこの train.ipynb の URL を、ChatGTP や、Google Ai に見せてから、改造箇所を問い合わせると、べんりです!!  
