@@ -36,3 +36,19 @@ lerobot.policies.act.modeling_act の class ACT(nn.Module) を直接使った、
   まだまだ、改造の余地は、あると思います。  
   n_decoder_layers=1 を 2 , 6 辺りに出来るみたい。ChatGTP が、其の様に言っていた。  
   改造するときは、おんちゃんのこの train.ipynb の URL を、ChatGTP や、Google Ai に見せてから、改造箇所を問い合わせると、べんりです!!  
+
+#### 4. lerobot ACT サンプル の　オリジナルの train と シュミレーション inference  
+
+  i) train  
+  $ python act_training_example.py  
+
+  ii) シュミレーション inference  
+  $ python act_training_example_check_sim_cui.py  
+  EMA_K = 0.05 を調整すると、少しは、アームの動作を変えられる。  
+
+
+#### 5. 参照  
+
+おんちゃんのブログをみとうせ!!  
+[初めてのフィジカルAi。Huggingface の LeRobot の ACT model で学ぶ。](https://www.netosa.com/blog/2026/05/aihuggingface-lerobot-act-model.html)  
+
