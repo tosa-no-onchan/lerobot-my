@@ -34,7 +34,7 @@ import collections
 
 
 # lerobot ACT example を、なるべく再現したい場合 use_ex=False
-use_ex=True
+use_ex=False
 
 input_shape=(3, 480, 640)
 n_action_steps=100
@@ -186,12 +186,20 @@ print("AIによる自動操作を開始します...（Ctrl+Cで終了）")
 CHUNK_SIZE = config.chunk_size  
 all_time_actions = collections.deque(maxlen=CHUNK_SIZE)
 
+#----------------------------
+#公式モデル（temporal_ensemble_coeff）でも、自作モデル（EMA_K）でも、これからは「アームの動きのクセ」に合わせて同じ感覚でチューニングが可能です。
+#    アームが手前で空振りしたり、手渡し時に位置がズレてぶつかる場合
+#        原因：過去の予測に引っ張られすぎて、アームの動きが脳内より遅れている（タイムラグがある）。
+#        対策：値を 0.05 や 0.08 など、少し大きめに設定して追従性を上げる。
+#    アームがカクカク激しく動きすぎて、キューブを弾いてしまう場合
+#        原因：最新の予測ノイズをそのまま拾ってしまっている。
+#        対策：値を 0.01 や 0.005 など、小さめに設定して動きをマイルドにする。
+#
 # アンサンブルの重み付け係数 (k) 。公式の推奨値は 0.01 
 # 小さいほど過去の予測が重視され、滑らか（ゆっくり）になります
 #EMA_K = 0.01 
 EMA_K = 0.05 
 #EMA_K = 0.08
-
 
 # chunk reuse add by nishi 2026.5.15
 cached_actions = None

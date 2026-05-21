@@ -40,14 +40,38 @@ TARGET_FRAME_TIME = 1.0 / env.metadata.get("render_fps", 50)
 # =========================
 device = torch.device("cuda")
 
-model_id = "output/robot_learning_tutorial/act-10K"
-#model_id = "output/robot_learning_tutorial/act-15K"
+#model_id = "output/robot_learning_tutorial/act-10K"
+model_id = "output/robot_learning_tutorial/act-15K"
+
+#----------------------------
+#公式モデル（temporal_ensemble_coeff）でも、自作モデル（EMA_K）でも、これからは「アームの動きのクセ」に合わせて同じ感覚でチューニングが可能です。
+#    アームが手前で空振りしたり、手渡し時に位置がズレてぶつかる場合
+#        原因：過去の予測に引っ張られすぎて、アームの動きが脳内より遅れている（タイムラグがある）。
+#        対策：値を 0.05 や 0.08 など、少し大きめに設定して追従性を上げる。
+#    アームがカクカク激しく動きすぎて、キューブを弾いてしまう場合
+#        原因：最新の予測ノイズをそのまま拾ってしまっている。
+#        対策：値を 0.01 や 0.005 など、小さめに設定して動きをマイルドにする。
+#
+# アンサンブルを有効化（推奨値 0.01）
+#EMA_K = 0.01
+#EMA_K = 0.05
+EMA_K = 0.08
 
 model = ACTPolicy.from_pretrained(
     model_id,
-    local_files_only=True
+    local_files_only=True,
+    # 2. 【ここが修正ポイント】内部コンフィグの temporal_ensemble を有効化
+    n_action_steps=1,                 # アンサンブル時は必須の 1
+    temporal_ensemble_coeff=EMA_K     # アンサンブルを有効化（推奨値 0.01）
 ).to(device)
 model.eval()
+#model.reset()
+if False:
+    # 特定の値だけをピンポイントで確認する場合
+    print("------------------------")
+    print(f"n_action_steps: {model.config.n_action_steps}")
+    print(f"temporal_ensemble_coeff: {model.config.temporal_ensemble_coeff}")
+
 # =========================
 # DATASET STATS
 # =========================
@@ -69,6 +93,8 @@ print('model.config.output_features',model.config.output_features)
 target_qpos = None
 
 obs, info = env.reset()
+model.reset()  # エピソード開始時に必ずリセット！
+
 try:
     while True:
         start_time = time.time()
@@ -142,7 +168,10 @@ try:
             time.sleep(sleep_time)
 
         if terminated or truncated:
+            print("Episode finished -> reset")
             obs, info = env.reset()
+            model.reset()  # エピソード開始時に必ずリセット！
+
 finally:
     env.close()
     cv2.destroyAllWindows()
