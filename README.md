@@ -10,3 +10,4 @@
 
    ACT モーション分割　train  
    上記 AlohaTransferCube を、 各エピソードを、複数 motion に分割して、 trian できるようにしました。  
+   2分割、 3分割 で、train 出来ます。  
