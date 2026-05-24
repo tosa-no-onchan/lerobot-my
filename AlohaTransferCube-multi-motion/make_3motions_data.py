@@ -147,6 +147,13 @@ for episode_idx in range(src_dataset.num_episodes):
     # このエピソードが全体の中のどこから始まるかを計算 (1回400フレーム)
     start_idx = int(src_dataset.meta.episodes["dataset_from_index"][episode_idx])
 
+    # v3.0 以降: meta/episodes/ 内のParquetファイル 
+    #print('src_dataset.meta.episodes:',src_dataset.meta.episodes)
+
+    end_idx = int(src_dataset.meta.episodes["dataset_to_index"][episode_idx])
+    cur_steps = end_idx - start_idx
+    #print('start_idx:',start_idx,' end_idx:',end_idx, ' cur_steps:',cur_steps)
+
     # 1. 元のエピソードからタスクを取得
     raw_task = src_dataset.meta.episodes["tasks"][episode_idx]
     
@@ -169,7 +176,8 @@ for episode_idx in range(src_dataset.num_episodes):
 
     # motion 分割数分処理します
     for i in range(num_splits):
-        trim_start,trim_end = pos_tbl[i]()
+        #trim_start,trim_end = pos_tbl[i]()
+        trim_start,trim_end = pos_tbl[i].comp_off(cur_steps)
         trim_start = start_idx + trim_start
         trim_end = start_idx + trim_end
 
