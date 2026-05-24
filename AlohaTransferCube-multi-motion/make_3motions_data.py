@@ -1,10 +1,22 @@
 # lerobot/aloha_sim_transfer_cube_human
 # dataset を、 3 分割して、保存します。
+# オーバラップを指定できます。
+#
 # make_3motions_data.py
+# Ver 2
+#
+# 1. run
+# $ export PYTHONPATH=$PYTHONPATH:/home/nishi/local/git-download/lerobot/src
+# $ python make_3motions_data.py
+#
+#  2. check datasets
+# $ lerobot-dataset-viz --repo-id local/split_dataset_0 --root outputs/split_dataset_0 --episode-index 0
+#
 
 import os
 import sys
 from pathlib import Path
+from typing import Any
 import numpy as np
 
 #export PYTHONPATH=$PYTHONPATH:/home/nishi/local/git-download/lerobot/src
@@ -40,15 +52,60 @@ src_dataset = LeRobotDataset(
 # 特徴量の構成（辞書型）を表示
 #print(dataset.features)
 
-num_splits = 2
-chunk_length = 200  # 各エピソードから切り出すフレーム数（例: 100）
+# 総エピソード数を取得
+#num_episodes = len(src_dataset.)
+
+#print('src_dataset.features:',src_dataset.features)
+
+print('len(src_dataset):',len(src_dataset))
+print('src_dataset.num_episodes',src_dataset.num_episodes)
+# あくまで、固定長とした場合
+episodes_rec_lng=int(len(src_dataset)/src_dataset.num_episodes)
+print('episodes_rec_lng:',episodes_rec_lng)
+
+USE_OLD_FUNC=False
+
+num_splits = 3
+chunk_length = 133  # 各エピソードから切り出すフレーム数（例: 100）
+
+# --- ⚙️ 設定パラメータ（ここで自由に調整できます） ---
+M1_LENGTH = 120  # モーション1の基本フレーム数 (2.4秒)
+M2_LENGTH = 130  # モーション2の基本フレーム数 (2.6秒)
+M3_LENGTH = 150  # モーション3の基本フレーム数 (3.0秒)
+
+# 💡 つなぎ目を前後になじませるための「オーバーラップ（重複）」フレーム数
+# きっちり分けたい場合は「0」に、前後0.2秒重ねたい場合は「10」などに設定してください
+OVERLAP = 10
+
+class pos():
+    def __init__(self,start :int|float,end:int|float) -> None:
+        self.start=start
+        self.end=end
+    def __call__(self) -> Any:
+        return self.start,self.end
+
+pos_tbl: list[pos] = []
+if USE_OLD_FUNC:
+    for i in range(num_splits):
+        pos_tbl.append(pos(i*chunk_length, (i+1)*chunk_length))
+
+else:
+    print(f"✂️ エピソードごとに分配を開始します... (Overlap: {OVERLAP}フレーム)")
+    pos_tbl=[
+        #{'start':0,'end':M1_LENGTH + OVERLAP},  # m1
+        pos(0, M1_LENGTH + OVERLAP),  # m1
+        #{'start':M1_LENGTH - OVERLAP,'end':M1_LENGTH + M2_LENGTH + OVERLAP}, # m2
+        pos(M1_LENGTH - OVERLAP, M1_LENGTH + M2_LENGTH + OVERLAP), #m2
+        #{'start':M1_LENGTH + M2_LENGTH - OVERLAP,'end':episodes_rec_lng}, # m3
+        pos(M1_LENGTH + M2_LENGTH - OVERLAP, episodes_rec_lng), #m3
+    ]
 
 # 保存対象にする特徴量キーのリストを作成（メタデータ用の一時キーを排除）
 valid_keys = list(src_dataset.features.keys())
 
 if False:
     # 最初の1コマ（1ステップ分）をのぞき見
-    frame = dataset[0]
+    frame = src_dataset[0]
     #print('frame.keys():',frame.keys())
     # model inputs は、(3,480,640) で、色順は、RGB です。
     # plt.imshow()は、デフォルトでRGB（赤・緑・青）の順序 なので、 model の入力も RGB のままです。
@@ -75,7 +132,9 @@ for i in range(num_splits):
     )
     split_datasets.append(ds)
 
+# 全エピソード（0〜49）をループで処理
 for episode_idx in range(src_dataset.num_episodes):
+    # このエピソードが全体の中のどこから始まるかを計算 (1回400フレーム)
     start_idx = int(src_dataset.meta.episodes["dataset_from_index"][episode_idx])
 
     # 1. 元のエピソードからタスクを取得
@@ -98,10 +157,12 @@ for episode_idx in range(src_dataset.num_episodes):
     # 【確認用】ここでログを出力（これで大括弧が消えなければ、表示している変数自体が違うことになります）
     print(f"Processing Episode {episode_idx+1}/{src_dataset.num_episodes} (Task: {task_text})...")
 
+    # motion 分割数分処理します
     for i in range(num_splits):
-        trim_start = start_idx + (i * chunk_length)
-        trim_end = trim_start + chunk_length
-        
+        trim_start,trim_end = pos_tbl[i]()
+        trim_start = start_idx + trim_start
+        trim_end = start_idx + trim_end
+
         # 1フレームずつ処理
         for t_idx in range(trim_start, trim_end):
             raw_frame_data = src_dataset[t_idx]
@@ -110,7 +171,6 @@ for episode_idx in range(src_dataset.num_episodes):
                 # 2. 自動管理用キーに加え、元のリスト型タスクキーも絶対に混入させない
                 if k in ['timestamp', 'task_index', 'episode_index', 'frame_index', 'index', 'task', 'tasks']:
                     continue
-                    
                 if k in raw_frame_data:
                     val = raw_frame_data[k]
                     
@@ -128,71 +188,9 @@ for episode_idx in range(src_dataset.num_episodes):
             # 3. ここで安全な文字列（task_text）のみを確実にセットする
             frame_dict["task"] = task_text
             split_datasets[i].add_frame(frame_dict)
-        
+
         # 1エピソード分のフレームを追加し終えたら確定・保存
         split_datasets[i].save_episode()
 
 print("3つのデータセットへの分割保存がすべて完了しました。")
 
-
-
-
-
-
-
-
-
-
-
-sys.exit()
-dataset_path = Path("/home/nishi/Documents/VisualStudio-lerobot_env/AlohaTransferCube-multi-motion/outputs/datasets/my_local_aloha_split_task")
-
-# 中身がある outputs 側のパスを正しく指定する
-#dataset_path = os.path.expanduser("~/Documents/VisualStudio-lerobot_env/AlohaTransferCube-multi-motion/outputs/datasets/my_local_aloha_split_task")
-
-# repo_idはダミー、rootにデータセットフォルダそのものを指定
-dataset = LeRobotDataset(
-    repo_id="my_local_aloha_split_task",
-    root=dataset_path,
-    #video_backend="pyav"  # 👈 これを追加
-)
-
-print("🎉 ついにローカルロードに成功しました！")
-print(f"総フレーム数: {len(dataset)}")
-
-
-
-# 2. 1フレーム抜いて中身（Shapeと追加したtask_index）を確認
-print("\n--- 🔍 1. データ構造の形状チェック ---")
-first_frame = dataset[0]
-print("データに含まれる項目:", list(first_frame.keys()))
-print(f"📷 画像の形状 (C, H, W): {first_frame['observation.images.top'].shape}")
-print(f"🦾 ロボット状態の形状: {first_frame['observation.state'].shape}")
-print(f"📌 最初のフレームの task_index: {first_frame['task_index'].item()}")
-
-# 3. モーションが狙い通り 0, 1, 2 に3分割されているか分布確認
-print("\n--- ✂️ 2. モーション分割の統計チェック (メモリ節約版・修正版) ---")
-try:
-    import numpy as np
-    import pyarrow.parquet as pq
-    
-    # 画像などを無視して、task_index 列だけをピンポイントで超高速・省メモリ読み込み
-    parquet_file = Path("/home/nishi/Documents/VisualStudio-lerobot_env/AlohaTransferCube-multi-motion/outputs/datasets/my_local_aloha_split_task/data/chunk-000/file-000.parquet")
-    table = pq.read_table(parquet_file, columns=["task_index"])
-    task_indices = table["task_index"].to_numpy()
-    
-    # 統計を集計
-    unique, counts = np.unique(task_indices, return_counts=True)
-    
-    # v3.0仕様の dataset.meta.tasks からタスク定義を取得
-    tasks_dict = dataset.meta.tasks if hasattr(dataset.meta, "tasks") else {}
-    
-    for task_id, count in zip(unique, counts):
-        # 登録されているタスク名を取得（なければデフォルト表記）
-        task_name = tasks_dict.get(int(task_id), "不明なタスク")
-        print(f"🎬 モーション {task_id} 【{task_name}】: {count} フレーム")
-        
-except Exception as e:
-    print(f"分布の集計中にエラーが発生しました: {e}")
-
-print("\n✨ これで全ての検証が終了しました！")

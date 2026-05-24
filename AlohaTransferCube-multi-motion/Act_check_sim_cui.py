@@ -50,7 +50,10 @@ if use_ex:
 # ENV
 # =========================
 #env = gym.make("gym_aloha/AlohaTransferCube-v0")
-env = gym.make("gym_aloha/AlohaTransferCube-v0", render_mode="rgb_array")
+#env = gym.make("gym_aloha/AlohaTransferCube-v0", render_mode="rgb_array")
+# デフォルトの400から450ステップ（約9秒）に延長する
+env = gym.make("gym_aloha/AlohaTransferCube-v0", render_mode="rgb_array",  max_episode_steps=450)
+
 
 # 環境のメタデータから想定FPSを取得（通常 50 が返ってきます）
 fps = env.metadata["render_fps"] 
@@ -201,6 +204,7 @@ all_time_actions = collections.deque(maxlen=CHUNK_SIZE)
 #EMA_K = 0.01 
 EMA_K = 0.05 
 #EMA_K = 0.08
+#EMA_K = 0.09
 
 # chunk reuse add by nishi 2026.5.15
 cached_actions = None
@@ -355,9 +359,19 @@ try:
         if sleep_time > 0:
             time.sleep(sleep_time)
 
+        # 修正案：terminated（成功）が来ても、すぐに reset せず数ステップ無視して進める
+        if terminated:
+            # 成功後、15ステップ（約0.3秒）だけそのままロボットを動かして描画を続ける
+            for _ in range(15):
+                obs, _, _, _, _ = env.step(final_action_norm) # 同じアクションを維持、または静止アクション
+            #break
+
         #done = terminated or truncated
         if terminated or truncated:
-            print("Episode finished -> reset")
+            if terminated:
+                print("Episode complete -> reset")
+            else:
+                print("Episode timeover -> reset")
             obs, info = env.reset()
             # smoothing state もリセット
             #target_qpos = None
