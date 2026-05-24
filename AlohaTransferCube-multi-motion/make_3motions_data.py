@@ -3,7 +3,7 @@
 # オーバラップを指定できます。
 #
 # make_3motions_data.py
-# Ver 2
+# Ver 2.1
 #
 # 1. run
 # $ export PYTHONPATH=$PYTHONPATH:/home/nishi/local/git-download/lerobot/src
@@ -78,11 +78,21 @@ M3_LENGTH = 150  # モーション3の基本フレーム数 (3.0秒)
 OVERLAP = 10
 
 class pos():
-    def __init__(self,start :int|float,end:int|float) -> None:
+    def __init__(self,start :int|float,end:int|float,steps=400) -> None:
         self.start=start
         self.end=end
+        self.steps=steps
     def __call__(self) -> Any:
         return self.start,self.end
+    #----------
+    # エピソードが、可変長の場合の計算
+    #  act_steps: 処理中のエピソードの steps count
+    #----------
+    def comp_off(self,act_steps:int) -> Any:
+        start_off = int((float(self.start) / float(self.steps)) * float(act_steps))
+        end_off = int((float(self.end) / float(self.steps)) * float(act_steps))
+        end_off = min(end_off, act_steps)
+        return start_off,end_off
 
 pos_tbl: list[pos] = []
 if USE_OLD_FUNC:
