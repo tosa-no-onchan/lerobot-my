@@ -29,6 +29,7 @@ Loss: 0.11 辺りになれば、OK
 
 env = gym.make("gym_aloha/AlohaTransferCube-v0")  
 のシミュレーションです。  
+すこしは、complete になる頻度が、増えたかも?  
 
 #### 4. 参照  
 
