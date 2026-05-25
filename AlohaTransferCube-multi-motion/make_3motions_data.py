@@ -40,6 +40,7 @@ import shutil
 # データセットを直接読み込む
 #dataset = LeRobotDataset("lerobot/aloha_static_pingpong_test")
 DATASET_ID = "lerobot/aloha_sim_transfer_cube_human"
+#DATASET_ID = "lerobot/svla_so101_pickplace"
 
 # データセットを作るコードを探して、delta_timestamps を追加します
 src_dataset = LeRobotDataset(
@@ -67,6 +68,8 @@ USE_OLD_FUNC=False
 
 num_splits = 3
 chunk_length = 133  # 各エピソードから切り出すフレーム数（例: 100）
+
+BASE_STEPS = 400
 
 # --- ⚙️ 設定パラメータ（ここで自由に調整できます） ---
 M1_LENGTH = 120  # モーション1の基本フレーム数 (2.4秒)
@@ -103,11 +106,11 @@ else:
     print(f"✂️ エピソードごとに分配を開始します... (Overlap: {OVERLAP}フレーム)")
     pos_tbl=[
         #{'start':0,'end':M1_LENGTH + OVERLAP},  # m1
-        pos(0, M1_LENGTH + OVERLAP),  # m1
+        pos(0, M1_LENGTH + OVERLAP, steps=BASE_STEPS),  # m1
         #{'start':M1_LENGTH - OVERLAP,'end':M1_LENGTH + M2_LENGTH + OVERLAP}, # m2
-        pos(M1_LENGTH - OVERLAP, M1_LENGTH + M2_LENGTH + OVERLAP), #m2
+        pos(M1_LENGTH - OVERLAP, M1_LENGTH + M2_LENGTH + OVERLAP, steps=BASE_STEPS), #m2
         #{'start':M1_LENGTH + M2_LENGTH - OVERLAP,'end':episodes_rec_lng}, # m3
-        pos(M1_LENGTH + M2_LENGTH - OVERLAP, episodes_rec_lng), #m3
+        pos(M1_LENGTH + M2_LENGTH - OVERLAP, BASE_STEPS, steps=BASE_STEPS), #m3
     ]
 
 # 保存対象にする特徴量キーのリストを作成（メタデータ用の一時キーを排除）
@@ -152,7 +155,7 @@ for episode_idx in range(src_dataset.num_episodes):
 
     end_idx = int(src_dataset.meta.episodes["dataset_to_index"][episode_idx])
     cur_steps = end_idx - start_idx
-    #print('start_idx:',start_idx,' end_idx:',end_idx, ' cur_steps:',cur_steps)
+    print('start_idx:',start_idx,' end_idx:',end_idx, ' cur_steps:',cur_steps)
 
     # 1. 元のエピソードからタスクを取得
     raw_task = src_dataset.meta.episodes["tasks"][episode_idx]
@@ -178,8 +181,13 @@ for episode_idx in range(src_dataset.num_episodes):
     for i in range(num_splits):
         #trim_start,trim_end = pos_tbl[i]()
         trim_start,trim_end = pos_tbl[i].comp_off(cur_steps)
+        print('trim_start:',trim_start,' trim_end:',trim_end)
         trim_start = start_idx + trim_start
         trim_end = start_idx + trim_end
+        if trim_end <= trim_start:
+            print("data ナシ motin 区分が、出ました。処理を終了します!!")
+            sys.exit()
+
 
         # 1フレームずつ処理
         for t_idx in range(trim_start, trim_end):
@@ -208,7 +216,13 @@ for episode_idx in range(src_dataset.num_episodes):
             split_datasets[i].add_frame(frame_dict)
 
         # 1エピソード分のフレームを追加し終えたら確定・保存
-        split_datasets[i].save_episode()
+        #split_datasets[i].save_episode()
+        # 💡 修正：実際にフレームが追加された場合のみ保存を試みる
+        if trim_end > trim_start:
+            split_datasets[i].save_episode()
+        else:
+            print(f"⚠️ 警告: モーション {i} はフレーム数が0件のため、Episode {episode_idx+1} ではスキップされました。")
+
 
 print("3つのデータセットへの分割保存がすべて完了しました。")
 
