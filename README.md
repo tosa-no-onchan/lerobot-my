@@ -16,5 +16,5 @@
 
     ACT モーション分割　train  
     LeRobot ACT train サンプルの、act_training_example.py と同じ Dtatasets:lerobot/svla_so101_pickplace を使って、  
-    モーション分割 Datasets で、 trian させてみました。  
+    モーション分割 Datasets で、 train させてみました。  
     inference は、実機になりますが、あいにく実機を持っていないので、 python scripts を作って、終了です。  
