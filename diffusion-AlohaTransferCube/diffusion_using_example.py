@@ -29,8 +29,6 @@ def main():
         model.config, model_id, dataset_stats=dataset_metadata.stats
     )
 
-    return
-
     # # find ports using lerobot-find-port
     follower_port = ...  # something like "/dev/tty.usbmodem58760431631"
 
