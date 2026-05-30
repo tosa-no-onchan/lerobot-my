@@ -65,7 +65,23 @@ def convert_mcap_to_lerobot():
             current_scan = scan_data
             current_scan_len=len(current_scan)
 
+        # /odom を追加 by nishi 2026.5.30
+        # --- ループ内のトピック分岐に以下を追加 ---
+        elif topic == "/odom":
+            # nav_msgs/msg/Odometry から現在の速度を抽出
+            linear_vel = msg.twist.twist.linear.x
+            angular_vel = msg.twist.twist.angular.z
+            
+            # actionと同様に最大速度で割って -1.0 〜 1.0 に正規化
+            norm_odom_linear = linear_vel / MAX_LINEAR_VEL
+            norm_odom_angular = angular_vel / MAX_ANGULAR_VEL
+            
+            # バッファに保持 (要素数2の配列)
+            current_odom = np.array([norm_odom_linear, norm_odom_angular], dtype=np.float32)
+
+
         elif topic == "/cmd_vel":
+            twist_data = msg.twist if hasattr(msg, "twist") else msg
             # geometry_msgs/msg/TwistStamped の場合は msg.twist.linear.x になります
             # ここで前述の「ノーマライズ（正規化）」を行う！
             norm_linear = msg.twist.linear.x / MAX_LINEAR_VEL
@@ -73,10 +89,13 @@ def convert_mcap_to_lerobot():
             action = np.array([norm_linear, norm_angular], dtype=np.float32)
 
             # カメラとLiDARのデータが揃っていれば、1つの「フレーム」として同期保存
-            if current_image is not None and current_scan is not None:
+            #if current_image is not None and current_scan is not None:
+            # 【修正】画像、LiDARに加えて、odomデータも揃っていることを条件にする
+            if current_image is not None and current_scan is not None and current_odom is not None:
                 frames.append({
                     "observation.image": current_image,
                     "observation.scan": current_scan,
+                    "observation.environment_state": current_odom, # 【追加】
                     "action": action,
                 })
 
@@ -89,9 +108,16 @@ def convert_mcap_to_lerobot():
         # 画像：(Channels, Height, Width) の順
         #"observation.image": {"dtype": "image", "shape": (3, 224, 224), "names": ["channels", "height", "width"]},
         # 【修正】画像ではなくビデオ(動画圧縮)として 640x480 を指定
-        "observation.video.front": {"dtype": "video", "shape": (3, 480, 640), "names": ["channels", "height", "width"]},
+        #"observation.video.front": {"dtype": "video", "shape": (3, 480, 640), "names": ["channels", "height", "width"]},
+        # 【決定版】型はvideo(動画圧縮)で、名前はACTが喜ぶ "observation.images.top" にする！
+        "observation.images.top": {"dtype": "video", "shape": (3, 480, 640), "names": ["channels", "height", "width"]},
+
         # LiDAR：(データ数,) の float32 1次元配列
         "observation.scan": {"dtype": "float32", "shape": (current_scan_len,), "names": ["scan_points"]},
+
+        # 【追加】ACTモデルが熱望していた現在速度のインプットポート
+        "observation.environment_state": {"dtype": "float32", "shape": (2,), "names": ["current_linear", "current_angular"]},
+
         # 【最新仕様に修正！】dtype を 'action' から 'float32' に変更します
         "action": {"dtype": "float32", "shape": (2,), "names": ["linear", "angular"]},
         # タスクテキスト  --> 定義しては、いけないバージョン
@@ -125,9 +151,12 @@ def convert_mcap_to_lerobot():
         dataset.add_frame({
             #"observation.image": img_tensor,
             # 【修正】上のfeaturesで定義したビデオ用のキー名に合わせる
-            "observation.video.front": img_tensor,
+            #"observation.video.front": img_tensor,
+            "observation.images.top": img_tensor,
             #"observation.scan": torch.from_numpy(frame["observation.scan"]),
             "observation.scan": torch.from_numpy(frame["observation.scan"]).float(), # 明示的にfloat型に
+            # 【追加】本物のオドメトリ速度データを流し込む！
+            "observation.environment_state": torch.from_numpy(frame["observation.environment_state"]).float(),
             "action": torch.from_numpy(frame["action"]).float(),
             # 【最新LeRobot仕様：タスクの文字列を渡す】
             # AIへの言葉の命令として「Navigate autonomously (自律走行せよ)」を与えます
