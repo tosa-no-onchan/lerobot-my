@@ -12,5 +12,6 @@ jupyter notebook で、
 train.ipynb  
 注) いま、ブラウザーから、train.ipynb を、表示出来ないみたいです。  
 git clone して、 local 上でjupyter notebook で確認してください。  
+train.py に変換したので、すぐ確認したい場合は、こちらをご覧ください。  
 
 
