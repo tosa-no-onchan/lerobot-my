@@ -14,4 +14,10 @@ train.ipynb
 git clone して、 local 上でjupyter notebook で確認してください。  
 train.py に変換したので、すぐ確認したい場合は、こちらをご覧ください。  
 
+#### 4. torch での、model inference 単体チェック  
 
+    $ python Act_check.py  
+    ROS2 ノードで、実行する前に、torch 環境で、predict 動作をチェックします。  
+
+
+#### 5. ROS2 ノードとして組み込んで、実際に Gazebo Wearhose Tugbot をドライブする。  
