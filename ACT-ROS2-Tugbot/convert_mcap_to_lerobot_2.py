@@ -8,6 +8,11 @@ $ source /opt/ros/jazzy/setup.bash
 $ source ~/colcon_ws-jazzy/install/local_setup.bash
 $ python convert_mcap_to_lerobot_2.py
 
+Viewr check
+$ export PYTHONPATH=$PYTHONPATH:/home/your-id/local/git-download/lerobot/src
+注) git clone した場所の src
+$ lerobot-dataset-viz --repo-id motion1 --root outputs/tugbot_nav2_imitation_2 --mode local --episode-index 0
+
 """
 import os
 import sys
@@ -22,6 +27,7 @@ from pathlib import Path
 import shutil # スクリプトの先頭、または関数内に追記
 import glob
 import math
+import yaml
 
 # --- 設定値 ---
 BAG_FILE_PATH = "tugbot_ai_dataset/tugbot_ai_dataset_0.mcap" # 実際のファイル名
@@ -44,7 +50,7 @@ def get_latest_odom(bag_path):
     last_odom_msg = None
     x = None
     y = None
-    last_yaw = None
+    last_yaw = 0.0
 
     print("MCAPファイルを解析中...（最後の/odomを探しています）")
 
@@ -74,7 +80,11 @@ def get_latest_odom(bag_path):
         print(f"向き (Yaw角度) -> {last_yaw:.4f} rad (度数法: {np.degrees(last_yaw):.1f}°)")
     else:
         print("/odom トピックが見つかりませんでした。")
-    return x,y,last_yaw 
+        x=0.0
+        y=0.0
+        last_yaw = 0.0
+    return x,y,float(last_yaw) 
+
 
 def setup_one_epi(bag_path,g_x,g_y,g_yaw):
     # データを一時的にためるリスト
@@ -296,6 +306,8 @@ def convert_mcap_to_lerobot():
 
         # 今回の episord の目的地と、ロボットの向きを、bag の最後から抽出します。
         x,y,last_yaw = get_latest_odom(mcap_path)
+
+        #print('type(x):',type(x),' type(y):',type(y),' type(last_yaw):',type(last_yaw))
         
         frames = setup_one_epi(mcap_path,x,y,last_yaw)
 
@@ -329,6 +341,18 @@ def convert_mcap_to_lerobot():
         # これにより、内部でエピソードIDが 0 -> 1 -> 2 と自動でインクリメントされます
         dataset.save_episode()
         print(f"エピソード {ep_idx} の保存が確定しました。")
+
+        # --- 🔴 追加：ゴール座標をYAMLに保存 🔴 ---
+        # 取得した x, y, last_yaw を保存
+        goal_data = {
+            "episode_id": ep_idx,
+            "goal_pose": {"x": x, "y": y, "yaw": last_yaw}
+        }
+        
+        yaml_path = os.path.join(out_dir, f"episode_{ep_idx}_goal.yaml")
+        with open(yaml_path, "w") as f:
+            yaml.dump(goal_data, f, default_flow_style=False)
+        print(f"📄 ゴール座標をYAMLに保存: {yaml_path}")        
 
     print("\n🎉 すべてのエピソードの統合が完了しました！")
 
