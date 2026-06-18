@@ -319,7 +319,7 @@ def setup_one_epi_tf(bag_path,g_x,g_y,g_yaw):
                 #trans = tf_buffer.lookup_transform_core('map', 'base_link', query_time)
                 trans = tf_buffer.lookup_transform_core('map', 'base_footprint', query_time)
             except Exception as e:
-                if True:
+                if False:
                     # まだ該当時間のtfがバッファにない場合はスキップ
                     print('skip3 e:',e)
                     print('query_time:',query_time)
@@ -340,9 +340,11 @@ def setup_one_epi_tf(bag_path,g_x,g_y,g_yaw):
                         tf_timer_err +=1
                         continue
 
+            # cur ロボットの位置
             robot_x = trans.transform.translation.x
             robot_y = trans.transform.translation.y
             
+            # クォータニオンから Yaw 角（向き）への変換
             q = trans.transform.rotation
             siny_cosp = 2 * (q.w * q.z + q.x * q.y)
             cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
@@ -352,6 +354,14 @@ def setup_one_epi_tf(bag_path,g_x,g_y,g_yaw):
             # 3. 5次元相対ベクトルの計算 (map座標系基準)
             dx = goal_x - robot_x
             dy = goal_y - robot_y
+
+            dx_robot = dx * np.cos(robot_yaw) + dy * np.sin(robot_yaw)  # 目的地の x軸長
+            dy_robot = -dx * np.sin(robot_yaw) + dy * np.cos(robot_yaw) # 目的地の y軸長
+            # 正規化
+            norm_dx_robot = np.clip(dx_robot / MAX_DISTANCE, -1.0, 1.0)
+            norm_dy_robot = np.clip(dy_robot / MAX_DISTANCE, -1.0, 1.0)
+
+            # これ以降は、旧来の値
             distance = math.sqrt(dx**2 + dy**2)
             
             global_angle_to_goal = math.atan2(dy, dx)
@@ -371,17 +381,19 @@ def setup_one_epi_tf(bag_path,g_x,g_y,g_yaw):
             current_odom = np.array([
                 norm_odom_linear, 
                 norm_odom_angular, 
-                norm_distance, 
-                norm_angle, 
+                #norm_distance, # 目的地の距離
+                norm_dx_robot,  # 目的地の x軸長
+                #norm_angle,    # 目的地の角度
+                norm_dy_robot,  # 目的地の y軸長
                 norm_goal_heading_error
             ], dtype=np.float32)
 
             # アクション（速度指令）の正規化
             action = np.array([
-                #msg.linear.x / MAX_LINEAR_VEL,     # Twist
-                #msg.angular.z / MAX_ANGULAR_VEL    # Twist
-                msg.twist.linear.x / MAX_LINEAR_VEL,  # TwistStamped
-                msg.twist.angular.z / MAX_ANGULAR_VEL # TwistStamped
+                #msg.twist.linear.x / MAX_LINEAR_VEL,  # TwistStamped
+                msg.twist.linear.x,  # TwistStamped
+                #msg.twist.angular.z / MAX_ANGULAR_VEL, # TwistStamped
+                msg.twist.angular.z  # TwistStamped
             ], dtype=np.float32)
 
             # LeRobot Dataset 用の辞書に格納
